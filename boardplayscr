@@ -1,0 +1,1239 @@
+using System.Collections;
+using System.Collections.Generic;
+
+using UnityEngine;
+
+public class BoardPlayScr : MonoBehaviour
+{
+    public Board board;
+    AI aiPlayer;
+    public Player firstPlayer;
+    public Player secondPlayer;
+    public PlayerTurn currentPlayer;
+    CoordinatesChip coordinatesChip;
+    MovingSquare movingSquareAI;
+    TypeGame typeGame;
+    TypeChip winChip;
+    float level;
+    List<int> goosesSquare;
+    // Use this for initialization
+    void Start()
+    {
+        goosesSquare = new List<int>()
+        {
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 19, 20
+        };
+       
+        CreateNewGame(PlayerTurn.firstPlayer, PlayerTurn.computer, TypeChip.fox, TypeChip.goose, 6);
+        Debug.Log(typeGame);
+        //board = new Board(7, 7);
+        //aiPlayer = new AI(TypeChip.fox, 8);
+        //board.AddChip(new Square(3, 3), Attachment.goose);
+        //board.AddChip(new Square(3, 1), Attachment.goose);
+        //board.AddChip(new Square(3, 2), Attachment.fox);
+        //coordinatesChip = new CoordinatesChip(board.squareOnBoard, board.CountGoose()); 
+      
+       
+        //Debug.Log("Фишка находящаяся в этой клетке: " + board.squareOnBoard[2, 3].attachment);
+        //Debug.Log("Номер клетки: " + board.squareOnBoard[3, 3].number);
+        //Debug.Log("Номер клетки: " + board.squareOnBoard[2, 3].number);
+        //Debug.Log("Кол-во гусей на поле: " + board.CountGoose());
+        //Debug.Log(board.ScoreField());
+        //Debug.Log("Кол-во возможных ходов лисы: " + board.CountMovingFox(coordinatesChip));
+        //movingSquareAI = aiPlayer.BestTurn(board, coordinatesChip);
+        //Debug.Log("Куда сделать лучший ход: Координаты откуда: x: " + movingSquareAI.beginSquare.square.x + 
+        //    " y: " + movingSquareAI.beginSquare.square.y);
+        //Debug.Log("Куда сделать лучший ход: Координаты куда: x: " + movingSquareAI.endingSquare.x +
+        //  " y: " + movingSquareAI.endingSquare.y);
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
+
+    void FixedUpdate()
+    {
+        if (winChip == TypeChip.none)
+        {
+            if (typeGame == TypeGame.aiGame)
+            {
+                if (currentPlayer == PlayerTurn.computer)
+                {
+                    Debug.Log(coordinatesChip.foxSquare.x + " " + coordinatesChip.foxSquare.y);
+                    // MovingSquare g = aiPlayer.BestTurn(board, coordinatesChip);
+                    //   Debug.Log(g.beginSquare.square.x + " " + g.beginSquare.square.y + "    " + g.endingSquare.x + " " + g.endingSquare.y);
+                    Movie(aiPlayer.BestTurn(board, coordinatesChip));
+
+                    for (int j = 0; j < 7; j++)
+                    {
+                        for (int i = 0; i < 7; i++)
+                        {
+                            //   Debug.Log(" фишка в текущей клетке " + this.board.squareOnBoard[j, i].number + " " + this.board.squareOnBoard[j, i].attachment);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void CreateNewGame(PlayerTurn firstPlayerTurn, PlayerTurn secondPlayerTurn, 
+        TypeChip firstPlayerChip, TypeChip secondPlayerChip, float level) // Создание новой игры
+    {
+        this.level = level;
+        firstPlayer = new Player(firstPlayerChip, firstPlayerTurn);
+        if (secondPlayerTurn == PlayerTurn.computer)
+        {
+            aiPlayer = new AI(secondPlayerChip, (int)level);
+            typeGame = TypeGame.aiGame;
+            CreateBoard(firstPlayer, aiPlayer);
+        }
+        else
+        {
+            secondPlayer = new Player(secondPlayerChip, secondPlayerTurn);
+            typeGame = TypeGame.twoPlayer;
+            CreateBoard(firstPlayer, secondPlayer);
+        }
+       
+    }
+
+    public void RestartGame() // Перезапуск игры, с уже выбранными настройками
+    {
+        if(typeGame == TypeGame.aiGame)
+        {
+            CreateBoard(firstPlayer, aiPlayer);
+        } 
+        else
+        {
+            CreateBoard(firstPlayer, secondPlayer);
+        }
+    }
+    public void CreateBoard(Player firstPlayer, Player secondPlayer) // Создание доски для игры 2 игроков
+    {
+        board = new Board(7, 7);
+        AddChipOnBoard();
+        coordinatesChip = new CoordinatesChip(board.squareOnBoard, board.CountGoose());
+        if (firstPlayer.typeChip == TypeChip.goose)
+        { 
+            this.currentPlayer = firstPlayer.currentPlayer;
+        } else
+        {
+            this.currentPlayer = secondPlayer.currentPlayer;
+        }
+    }
+
+    public void CreateBoard(Player firstPlayer, AI aiPlayer) // Создание доски для игры с компьютером
+    {
+        board = new Board(7, 7);
+        AddChipOnBoard();
+        coordinatesChip = new CoordinatesChip(board.squareOnBoard, board.CountGoose());
+        if (firstPlayer.typeChip == TypeChip.goose)
+        {
+            this.currentPlayer = firstPlayer.currentPlayer;
+        }
+        else
+        {
+            this.currentPlayer = aiPlayer.currentPlayer;
+        }
+    }
+    
+    public void AddChipOnBoard() // Расстановка фишек на поле
+    {
+        for(int j = 6; j > 2; j--)
+        {
+            for (int i = 0; i < 7; i++)
+            {
+                foreach (int k in goosesSquare)
+                {
+                    this.board.squareOnBoard[j, i].attachment = (k == this.board.squareOnBoard[j, i].number)
+                                                                ? Attachment.goose : this.board.squareOnBoard[j, i].attachment;
+
+                }
+             
+            }
+        }
+        this.board.squareOnBoard[3, 3].attachment = Attachment.fox;
+    }
+    public void Movie(MovingSquare movingSquare) // Совершение хода
+    {
+        if(board.FoxEatGoose(movingSquare))
+        {
+            Square deleteChipOnSquare = new Square(
+                                      (movingSquare.beginSquare.square.x == movingSquare.endingSquare.x) ? movingSquare.endingSquare.x :
+                                      (movingSquare.beginSquare.square.x < movingSquare.endingSquare.x) ? movingSquare.endingSquare.x - 1 : movingSquare.beginSquare.square.x - 1,
+                                      (movingSquare.beginSquare.square.y == movingSquare.endingSquare.y) ? movingSquare.endingSquare.y :
+                                      (movingSquare.beginSquare.square.y < movingSquare.endingSquare.y) ? movingSquare.endingSquare.y - 1 : movingSquare.beginSquare.square.y - 1);
+            board.MovieChip(movingSquare, board);
+            board.DeleteChip(deleteChipOnSquare);
+          
+        } else
+        {
+            board.MovieChip(movingSquare, board);
+        }
+        coordinatesChip = new CoordinatesChip(board.squareOnBoard, board.CountGoose());
+        UpdateCurrentPlayer();
+    }
+
+    public void UpdateCurrentPlayer() //Обновление текущего игрока
+    {
+        if(typeGame == TypeGame.aiGame)
+        {
+            if(currentPlayer == PlayerTurn.firstPlayer)
+            {
+                currentPlayer++;
+            }  else
+            {
+                currentPlayer--;
+            }
+
+        } else
+        {
+            if(currentPlayer == PlayerTurn.firstPlayer)
+            {
+                currentPlayer += 2;
+            } else
+            {
+                currentPlayer -= 2;
+            }
+        }
+    }
+
+    public void CheckWinChipGame()
+    {
+        if(board.CheckWin(coordinatesChip) != TypeChip.none)
+        {
+            winChip = board.CheckWin(coordinatesChip);
+        }
+    }
+ 
+}
+
+public interface ICloneable //Интерфейс для создания копий объектов
+{
+    object Clone();
+}
+public class Board // Класс доски
+{
+    public TypeChip winChip;
+    public AttachmentSquare[,] squareOnBoard { get; set; }
+    public int x, y;
+    List<Square> zeroSquare = new List<Square>()
+    {
+        new Square(0, 0), new Square(1, 0), new Square(0, 1), new Square(1, 1),
+        new Square(5, 0), new Square(6, 0), new Square(5, 1), new Square(6, 1),
+        new Square(0, 5), new Square(1, 5), new Square(0, 6), new Square(1, 6),
+        new Square(5, 5), new Square(6, 5), new Square(5, 6), new Square(6, 6),
+    };
+
+    public object Clone()
+    {
+        AttachmentSquare[,] newSquareOnBoard = new AttachmentSquare[this.y, this.x];
+        for (int j = 0; j < y; j++)
+            for (int i = 0; i < x; i++)
+            {
+                newSquareOnBoard[j, i] = (AttachmentSquare)this.squareOnBoard[j, i].Clone();
+            };
+
+        return new Board
+        {
+            x = this.x,
+            y = this.y,
+            winChip = this.winChip,
+            squareOnBoard = newSquareOnBoard
+        };
+    }
+    public Board()
+    {
+        this.x = 0;
+        this.y = 0;
+        this.squareOnBoard = new AttachmentSquare[1, 1];
+    }
+    public Board(int x, int y) // Конструктор доски
+    {
+        this.x = x;
+        this.y = y;
+        squareOnBoard = new AttachmentSquare[y, x];
+        int numberSquare = 1;
+        for (int j = 0; j < y; j++)
+            for (int i = 0; i < x; i++)
+            {
+                Square square = new Square(i, j);
+                bool zeroSquareControl = false; //переменная для проверки является ли клетка отсутствующей
+                foreach (Square k in zeroSquare)
+                {
+                    if (k == square)
+                    {
+                        zeroSquareControl = true;
+                    }
+                }
+                if (zeroSquareControl == true)
+                {
+                    AttachmentSquare attachmentSquare = new AttachmentSquare(Attachment.zero, square);
+                    this.squareOnBoard[j, i] = attachmentSquare;
+                }
+                else
+                {
+                    AttachmentSquare attachmentSquare = new AttachmentSquare(Attachment.none, square);
+                    this.squareOnBoard[j, i] = attachmentSquare;
+                }
+            }
+
+        for (int j = y - 1; j >= 0; j--)
+            for (int i = 0; i < x; i++)
+            {
+                if (squareOnBoard[j, i].attachment != Attachment.zero)
+                {
+                    squareOnBoard[j, i].number = numberSquare;
+                    numberSquare++;
+                } else
+                {
+                    squareOnBoard[j, i].number = 0;
+                }
+            }
+    }
+   
+    public TypeChip CheckWin(CoordinatesChip coordinatesChip) //Метод проверки выигрыша лисы или гусей
+    {
+        if (CountGoose() < 7)
+        {
+            winChip = TypeChip.fox;
+            return TypeChip.fox;
+        } else if (CountMovingFox(coordinatesChip) == 0)
+        {
+            winChip = TypeChip.goose;
+            return TypeChip.goose;
+        } else
+        {
+            winChip = TypeChip.none;
+            return TypeChip.none;
+        }
+
+        
+    }
+    public int ScoreField()//метод для подсчета очков на текущем поле (по умолчанию очки считаются в пользу Лисы (компьтер играет за нее))
+    {
+        int score = 0;
+        for (int j = 0; j < 7; j++)
+        {
+            for (int i = 0; i < 7; i++)
+            {
+                if (CheckedSquareGoose(this.squareOnBoard[j, i]))
+                {
+                    score--;
+                    for (int j1 = j - 1; j1 <= j + 1; j1++)
+                    {
+                        for (int i1 = i - 1; i1 <= i + 1; i1++)
+                        {
+                            if (i1 >= 0 && i1 <= 6 &&
+                                   j1 >= 0 && j1 <= 6)
+                            {
+                                if(i1 == i && j1 == j)
+                                {
+                                    
+                                } else  if (this.squareOnBoard[j1, i1].attachment != Attachment.zero)
+                                {
+                                    score = (this.squareOnBoard[j1, i1].attachment == Attachment.goose) ? score - 2 : score;                                 
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (CheckedSquareFox(this.squareOnBoard[j, i]))
+                {
+                    for (int j1 = j - 2; j1 <= j + 2; j1++)
+                    {
+                        for (int i1 = i - 2; i1 <= i + 2; i1++)
+                        {
+                            if (i1 >= 0 && i1 <= 6 &&
+                                j1 >= 0 && j1 <= 6)
+                            {
+                                if (this.squareOnBoard[j1, i1].attachment != Attachment.zero)
+                                {
+                                    Square square = new Square(i1, j1);
+                                    if (CanFoxMovie(this.squareOnBoard[j, i], square) && !FoxEatGoose(this.squareOnBoard[j, i], square))
+                                    {
+                                        score++;                               
+                                    }
+                                    else
+                                    if (CanFoxMovie(this.squareOnBoard[j, i], square))
+                                    {
+                                        score = score + 10;
+                                    }
+                                }                                 
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return score;
+    }
+    public int CountGoose() // Метод подсчета кол-ва гусей на поле
+    {
+        int countGooses = 0;
+        for (int j = 0; j < 7; j++)
+        {
+            for (int i = 0; i < 7; i++)
+            {
+                if (squareOnBoard[j, i].attachment == Attachment.goose)
+                {
+                    countGooses++;
+                }
+            }
+        }
+        return countGooses;
+    }
+    public int CountMovingFox(CoordinatesChip coordinatesChip) //Метод подсчета кол-ва возможных ходов для лисы
+    {
+        int countMovingFox = 0;
+        int x = coordinatesChip.foxSquare.x;
+        int y = coordinatesChip.foxSquare.y;
+        for (int j = y - 2; j <= y + 2; j++)
+        {
+            for (int i = x - 2; i <= x + 2; i++)
+            {
+                if (i >= 0 && i <= 6 &&
+                    j >= 0 && j <= 6)
+                {
+                    if (squareOnBoard[y, x].attachment != Attachment.zero)
+                    {
+                        Square square = new Square(i, j);
+                        if (CanFoxMovie(squareOnBoard[y, x], square) && !FoxEatGoose(squareOnBoard[y, x], square))
+                        {
+                            countMovingFox++;
+                        }
+                        else
+                        if (CanFoxMovie(squareOnBoard[y, x], square) && FoxEatGoose(squareOnBoard[y, x], square))
+                        {
+                            countMovingFox++;
+                        }
+                    }
+                }
+            }
+        }
+        return countMovingFox;
+    }
+    public void MovieChip(MovingSquare movingSquare, Board board) //метод для совершения перемещения фишки
+    {
+        Board newBoard = board;
+        newBoard.squareOnBoard[movingSquare.endingSquare.y, movingSquare.endingSquare.x].attachment = movingSquare.beginSquare.attachment;
+        newBoard.squareOnBoard[movingSquare.beginSquare.square.y, movingSquare.beginSquare.square.x].attachment = Attachment.none;
+       
+    }
+    
+    public Board DeleteChip(Square square) //метод удаления фишки
+    {
+        Board newBoard = this;
+        newBoard.squareOnBoard[square.y, square.x].attachment = Attachment.none;
+        return newBoard;
+    }
+    public void AddChip(Square square, Attachment attachment) //метод добавления фишки на поле
+    {
+        this.squareOnBoard[square.y, square.x].attachment = attachment;
+    }
+    public bool CheckedSquareNone(AttachmentSquare squareOnBoard) //метод проверки клетки поля пустая она или нет
+    {
+        if (squareOnBoard.attachment == Attachment.none)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public bool CheckedSquareGoose(AttachmentSquare squareOnBoard) //метод проверки клетки поля на наличие гуся
+    {
+        if (squareOnBoard.attachment == Attachment.goose)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public bool CheckedSquareFox(AttachmentSquare squareOnBoard) //метод проверки клетки поля на наличие лисы
+    {
+        if (squareOnBoard.attachment == Attachment.fox)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public bool CanGoseeMovie(MovingSquare movingSquare) //Метод проверки возможности пойти для гуся
+    {
+        if (movingSquare.beginSquare.attachment != Attachment.goose || !CheckedSquareNone(this.squareOnBoard[movingSquare.endingSquare.y,
+            movingSquare.endingSquare.x]))
+        {
+            return false;
+        }
+
+        if (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) == 1 &&
+           Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) == 1)
+        {
+            return false;
+        }
+
+        if (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) > 1) 
+        {
+            return false;
+        }
+        if (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) > 1)
+        {
+            return false;
+        }
+        else
+        {
+            return (squareOnBoard[movingSquare.endingSquare.y, movingSquare.endingSquare.x].attachment == Attachment.none) ? true : false;
+        }
+    }
+
+    public bool CanFoxMovie(MovingSquare movingSquare) //Метод проверки возможности пойти для лисы
+    {
+        if (movingSquare.beginSquare.attachment != Attachment.fox)
+        {
+            return false;
+        }
+
+        if (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) > 2 ||
+            Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) > 2)
+        {
+            return false;
+        }
+
+        if (
+            FoxEatGoose(movingSquare) &&
+            squareOnBoard[movingSquare.endingSquare.y, movingSquare.endingSquare.x].attachment == Attachment.none &&
+            (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) == 2 ||
+            Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) == 2)                  
+            )
+        {
+            return (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) == 2 &&
+                    Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) == 2 &&
+                    squareOnBoard[movingSquare.beginSquare.square.y, movingSquare.beginSquare.square.x].number % 2 == 0 &&
+                    squareOnBoard[movingSquare.endingSquare.y, movingSquare.endingSquare.x].number % 2 == 0)
+                    ? false : true;
+        }
+        else if (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) < 2 &&
+                 Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) < 2 &&
+                 squareOnBoard[movingSquare.endingSquare.y, movingSquare.endingSquare.x].attachment == Attachment.none)
+        {
+            return (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) == 1 &&
+                    Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) == 1 &&
+                    squareOnBoard[movingSquare.beginSquare.square.y, movingSquare.beginSquare.square.x].number % 2 == 0 &&
+                    squareOnBoard[movingSquare.endingSquare.y, movingSquare.endingSquare.x].number % 2 == 0) ? false : true;
+        }
+        else
+        {
+            return false;
+        }
+
+    }
+
+    public bool CanFoxMovie(AttachmentSquare attachmentSquare, Square square) //Метод проверки возможности пойти для лисы
+    {
+        if (attachmentSquare.attachment != Attachment.fox)
+        {
+            return false;
+        }
+
+        if (squareOnBoard[square.y, square.x].attachment == Attachment.none &&
+            (Mathf.Abs(Mathf.Abs(attachmentSquare.square.x) - Mathf.Abs(square.x)) == 2 ||
+             Mathf.Abs(Mathf.Abs(attachmentSquare.square.y) - Mathf.Abs(square.y)) == 2  ) &&
+             FoxEatGoose(attachmentSquare, square)
+             )
+        {
+            return (Mathf.Abs(Mathf.Abs(attachmentSquare.square.x) - Mathf.Abs(square.x)) == 2 &&
+                    Mathf.Abs(Mathf.Abs(attachmentSquare.square.y) - Mathf.Abs(square.y)) == 2 &&
+                    squareOnBoard[attachmentSquare.square.y, attachmentSquare.square.x].number % 2 == 0 &&
+                    squareOnBoard[square.y, square.x].number % 2 == 0)
+                    ? false : true;
+        }
+        else if (Mathf.Abs(Mathf.Abs(attachmentSquare.square.x) - Mathf.Abs(square.x)) < 2 &&
+                 Mathf.Abs(Mathf.Abs(attachmentSquare.square.y) - Mathf.Abs(square.y)) < 2 &&
+                 squareOnBoard[square.y, square.x].attachment == Attachment.none
+                 )
+             {
+
+                  return (Mathf.Abs(Mathf.Abs(attachmentSquare.square.x) - Mathf.Abs(square.x)) == 1 &&
+                          Mathf.Abs(Mathf.Abs(attachmentSquare.square.y) - Mathf.Abs(square.y)) == 1 &&
+                          squareOnBoard[attachmentSquare.square.y, attachmentSquare.square.x].number % 2 == 0 &&
+                          squareOnBoard[square.y, square.x].number % 2 == 0) 
+                 ? false : true;
+             }
+        else
+        {
+            return false;
+        }
+
+    }
+    public bool FoxEatGoose(MovingSquare movingSquare) //Метод проверки съела ли лиса гуся
+    {
+        int x = movingSquare.beginSquare.square.x;
+        int y = movingSquare.beginSquare.square.y;
+
+        if (movingSquare.beginSquare.attachment != Attachment.fox)
+        {
+            return false;
+        }
+
+
+        x = (movingSquare.beginSquare.square.x == movingSquare.endingSquare.x) 
+            ? movingSquare.endingSquare.x : (movingSquare.beginSquare.square.x < movingSquare.endingSquare.x && 
+            Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) == 2)
+            ? movingSquare.endingSquare.x - 1 : 
+            ( Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.x) - Mathf.Abs(movingSquare.endingSquare.x)) == 2) ?
+            movingSquare.beginSquare.square.x - 1 : -1;
+
+        y = (movingSquare.beginSquare.square.y == movingSquare.endingSquare.y)
+            ? movingSquare.endingSquare.y : (movingSquare.beginSquare.square.y < movingSquare.endingSquare.y && 
+            Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) == 2)
+            ? movingSquare.endingSquare.y - 1 :
+            (Mathf.Abs(Mathf.Abs(movingSquare.beginSquare.square.y) - Mathf.Abs(movingSquare.endingSquare.y)) == 2) ?
+            movingSquare.beginSquare.square.y - 1 : -1;
+        if (y >= 0 && x >= 0)
+        {
+            if (CheckedSquareGoose(squareOnBoard[y, x]))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        } 
+        else
+        {
+            return false;
+        }
+    }
+
+    public bool FoxEatGoose(AttachmentSquare attachmentSquare, Square square) //Метод проверки съела ли лиса гуся
+    {
+        int x;
+        int y;
+
+        if (attachmentSquare.attachment != Attachment.fox)
+        {
+            return false;
+        }
+
+
+        x = (attachmentSquare.square.x == square.x) 
+            ? square.x : (attachmentSquare.square.x < square.x &&
+            Mathf.Abs(Mathf.Abs(attachmentSquare.square.x) - Mathf.Abs(square.x)) == 2)
+            ? square.x - 1 : (Mathf.Abs(Mathf.Abs(attachmentSquare.square.x) - Mathf.Abs(square.x)) == 2)
+            ? attachmentSquare.square.y - 1 : -1;
+
+        y = (attachmentSquare.square.y == square.y)
+            ? square.y :(attachmentSquare.square.y < square.y && 
+            Mathf.Abs(Mathf.Abs(attachmentSquare.square.y) - Mathf.Abs(square.y)) == 2)
+            ? square.y - 1 : (Mathf.Abs(Mathf.Abs(attachmentSquare.square.y) - Mathf.Abs(square.y)) == 2)
+            ? attachmentSquare.square.y - 1 : -1;
+        if (y >= 0 && x >= 0)
+        {
+            if (CheckedSquareGoose(squareOnBoard[y, x]))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+        
+
+    }
+
+}
+
+public class CoordinatesChip : ICloneable// Хранит координаты фишек на поле 
+{
+    public Square foxSquare;
+    public Square[] goosesSquare;
+
+    public CoordinatesChip()
+    {
+        foxSquare = new Square();
+        goosesSquare = new Square[17];
+    }
+    public CoordinatesChip(AttachmentSquare[,] attachmentSquares, int countGooses)
+    {
+        goosesSquare = new Square[countGooses];
+        int count = 0;
+        for(int j = 0; j < 7; j++)
+        {
+            for (int i = 0; i < 7; i++)
+            {
+                if(attachmentSquares[j, i].attachment == Attachment.fox)
+                {
+                    foxSquare = new Square(i, j);
+                }
+
+                if(attachmentSquares[j, i].attachment == Attachment.goose)
+                {
+                    goosesSquare[count].x = i;
+                    goosesSquare[count].y = j;
+                    count++;
+                }
+            }
+        }
+    }
+    public object Clone()
+    {
+        return this.MemberwiseClone();
+    }
+}
+
+public class AttachmentSquare : ICloneable // Хранит клетку и ее состояние 
+{
+    public Attachment attachment { get; set; }
+    public Square square { get; set; }
+    public int number { get; set; }
+    public object Clone()
+    {
+        return this.MemberwiseClone();
+    }
+    public AttachmentSquare()
+    {
+        this.attachment = Attachment.none;
+        this.square = new Square();
+        this.number = 0;
+    }
+    public AttachmentSquare(Attachment attachment, Square square)
+    {
+        this.attachment = attachment;
+        this.square = square;
+        this.number = 0;
+    }
+
+   
+}
+
+public class MovingSquare : ICloneable //перменная хранит начальную и конечную клетку для хода
+{
+    public AttachmentSquare beginSquare { get; set; }
+    public Square endingSquare { get; set; }
+
+    public object Clone()
+    {
+        AttachmentSquare attachmentSquare = (AttachmentSquare)this.beginSquare.Clone();
+        return new MovingSquare
+        {
+            beginSquare = attachmentSquare,
+            endingSquare = this.endingSquare
+        };
+    }
+    public MovingSquare()
+    {
+        this.beginSquare = new AttachmentSquare();
+        this.endingSquare = new Square();
+    }
+
+    public MovingSquare(AttachmentSquare beginSquare, Square endingSquare)
+    {
+        this.beginSquare = beginSquare;
+        this.endingSquare = endingSquare;
+    }
+
+}
+
+public struct Square //Клетка, хранит ее координаты 
+{
+    public int x { get; set; }
+    public int y { get; set; }
+
+ 
+    public Square(int x, int y)
+    {
+        this.x = x;
+        this.y = y;
+    }
+
+    public static bool operator == (Square a, Square b)
+    {
+        return (a.x == b.x && a.y == b.y);
+    }
+    public static bool operator != (Square a, Square b)
+    {
+        return (a.x != b.x || a.y != b.y);
+    }
+}
+
+public enum Attachment // Состояния клетки (к какому игроку относится) 
+{
+    none,
+    zero,
+    fox,
+    goose
+}
+
+public enum PlayerTurn //ход игрока
+{
+    none,
+    firstPlayer,
+    computer,
+    secondPlayer,  
+}
+
+public enum TypeChip
+{
+    none,
+    fox,
+    goose
+}
+
+public enum TypeGame
+{
+    none,
+    aiGame,
+    twoPlayer
+}
+public class Player // Класс игрока (содержит сведения о нем и некоторые методы)
+{
+    public TypeChip typeChip;
+    public PlayerTurn currentPlayer;
+    public Player(TypeChip typeChip, PlayerTurn currentPlayer)
+    {
+        this.currentPlayer = currentPlayer;
+        this.typeChip = typeChip;
+       
+    }
+    
+}
+public class AI  // Класс компьютера (содержит сведения о нем и некоторые методы)
+{
+    public TypeChip typeChip;
+    public PlayerTurn currentPlayer;
+    public int maxDepth;
+    int depth = 1;
+    public AI (TypeChip typeChip, int maxDepth)
+    {
+        this.typeChip = typeChip;
+        this.currentPlayer = PlayerTurn.computer;
+        this.maxDepth = maxDepth;
+    }
+
+    public MovingSquare BestTurn(Board board, CoordinatesChip coordinatesChip)
+    {
+        int alpha = -200, beta = +200;
+        int bestScore = -200;
+        int score;
+        MovingSquare movie = new MovingSquare();
+        Board newBoard = (Board)board.Clone();
+        Square square =  new Square();
+        MovingSquare bestMovingSquare = new MovingSquare();
+        if(typeChip == TypeChip.fox)
+        {
+            square = coordinatesChip.foxSquare;
+            
+            for(int j = square.y - 2; j <= square.y + 2; j++)
+            {
+                for (int i = square.x - 2; i <= square.x + 2; i++)
+                {
+                    if (i >= 0 && i <= 6 &&
+                    j >= 0 && j <= 6)
+                    {
+                        if (board.squareOnBoard[j, i].attachment != Attachment.zero)
+                        {
+                            newBoard = (Board)board.Clone();
+                            CoordinatesChip newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                            Square endSquare = new Square(i, j);
+                            movie = new MovingSquare(board.squareOnBoard[square.y, square.x], endSquare);
+
+                            if (board.CanFoxMovie(movie) &&
+                              board.FoxEatGoose(movie))
+                            {
+                                Square deleteChipOnSquare = new Square(
+                                         (square.x == endSquare.x) ? square.x :
+                                         (square.x < endSquare.x) ? endSquare.x - 1 : square.x - 1,
+                                         (square.y == endSquare.y) ? square.x :
+                                         (square.y < endSquare.y) ? endSquare.y - 1 : square.y - 1);
+                                newBoard.MovieChip(movie, newBoard);
+                                newBoard.DeleteChip(deleteChipOnSquare);
+                                newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                score = MinMax(newBoard, depth, this.maxDepth, currentPlayer - 1, newCoordenatesChip, alpha, beta);
+
+                                if (score > bestScore)
+                                {
+                                    bestScore = score;
+                                    bestMovingSquare = (MovingSquare)movie.Clone();
+                                }
+                                alpha = Mathf.Max(alpha, score);
+                                score = -100;
+                                if (beta < alpha)
+                                {
+                                    break;
+                                }
+                            } else
+                            if (board.CanFoxMovie(movie) && 
+                               !board.FoxEatGoose(movie))
+                            {
+                                newBoard.MovieChip(movie, newBoard);
+                                newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                score = MinMax(newBoard, depth, this.maxDepth, currentPlayer - 1, newCoordenatesChip, alpha, beta);
+
+                                if (score > bestScore)
+                                {
+                                    bestScore = score;
+                                    bestMovingSquare = (MovingSquare)movie.Clone();
+                                }
+                                alpha = Mathf.Max(alpha, score);
+                                score = -100;
+                                if (beta < alpha)
+                                {
+                                    break;
+                                }
+                            }
+                         
+                        }
+                    }
+                }
+            }
+        } 
+        else if (typeChip == TypeChip.goose)
+        {
+            int range;
+            if (coordinatesChip.goosesSquare.Length > 9)
+            {
+                range = coordinatesChip.goosesSquare.Length / 2;
+            }
+            else
+            {
+                range = coordinatesChip.goosesSquare.Length;
+            }
+            for (int k = 0; k < range; k++)
+            {
+                square = coordinatesChip.goosesSquare[k];
+                for (int j = square.y - 1; j <= square.y + 1; j++)
+                {
+                    for (int i = square.x - 1; i <= square.x + 1; i++)
+                    {
+                        if (i >= 0 && i <= 6 &&
+                               j >= 0 && j <= 6)
+                        {
+                            if (board.squareOnBoard[j, i].attachment != Attachment.zero)
+                            {
+                                newBoard = (Board)board.Clone();
+                                CoordinatesChip newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                Square endSquare = new Square(i, j);
+                                movie = new MovingSquare(board.squareOnBoard[square.y, square.x], endSquare);
+                                if(board.CanGoseeMovie(movie))
+                                {
+                                    newBoard.MovieChip(movie, newBoard);
+                                    newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                    score = MinMax(newBoard, depth, this.maxDepth, currentPlayer - 1, newCoordenatesChip, alpha, beta);
+                                    if (score > bestScore)
+                                    {
+                                        bestScore = score;
+                                        bestMovingSquare = (MovingSquare)movie.Clone();
+                                    }
+                                    alpha = Mathf.Max(alpha, score);
+                                    score = -100;
+                                    if (beta < alpha)
+                                    {
+                                        break;
+                                    }
+                                }                         
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return bestMovingSquare;
+    }
+    public int MinMax(Board board, int depth, int maxDepth, PlayerTurn currentPlayer, CoordinatesChip coordinatesChip, int alpha, int beta)
+    {    
+        Board newBoard = new Board(1,1);
+        Square square = new Square();
+        MovingSquare movie = new MovingSquare();
+        int score = 0;
+        int returnScore = 0;
+        if (board.winChip == TypeChip.fox)
+        {
+            return (typeChip == TypeChip.fox) ? returnScore = 201 : returnScore = -201;
+        } else 
+        if (board.winChip == TypeChip.goose)
+        {
+            return (typeChip == TypeChip.goose) ? returnScore = 201 : returnScore = -201;
+        }
+        else
+        if (depth == maxDepth)
+        {
+            returnScore = (typeChip == TypeChip.goose) ? board.ScoreField() * (-1) : board.ScoreField();
+            return returnScore;
+        }
+        else if (currentPlayer == PlayerTurn.computer)
+        {
+            int bestScore = -200;
+            if (typeChip == TypeChip.fox)
+            {
+                square = coordinatesChip.foxSquare;
+
+                for (int j = square.y - 2; j <= square.y + 2; j++)
+                {
+                    for (int i = square.x - 2; i <= square.x + 2; i++)
+                    {
+                        if (i >= 0 && i <= 6 &&
+                        j >= 0 && j <= 6)
+                        {
+                            if (board.squareOnBoard[j, i].attachment != Attachment.zero)
+                            {
+                                
+                                newBoard = (Board)board.Clone();
+                                CoordinatesChip newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                Square endSquare = new Square(i, j);
+                                movie = new MovingSquare(board.squareOnBoard[square.y, square.x], endSquare);
+                                if (board.CanFoxMovie(movie) &&
+                                   !board.FoxEatGoose(movie))
+                                {
+                                    newBoard.MovieChip(movie, newBoard);
+                                    newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                    score = MinMax(newBoard, depth + 1, this.maxDepth, currentPlayer - 1, newCoordenatesChip, alpha, beta);
+                                    if (score > bestScore)
+                                    {
+                                        bestScore = score;
+                                        
+                                    }
+                                    alpha = Mathf.Max(alpha, score);
+                                
+                                    if(beta < alpha)
+                                    {
+                                        break;
+                                    }
+                                }
+                                else
+                                if (board.CanFoxMovie(movie) &&
+                                    board.FoxEatGoose(movie))
+                                {
+                                    Square deleteChipOnSquare = new Square(
+                                        (square.x == endSquare.x) ? square.x :
+                                        (square.x < endSquare.x) ? endSquare.x - 1 : square.x - 1,
+                                        (square.y == endSquare.y) ? square.x :
+                                        (square.y < endSquare.y) ? endSquare.y - 1 : square.y - 1);
+
+                                    newBoard.MovieChip(movie, newBoard);
+                                    newBoard.DeleteChip(deleteChipOnSquare);
+                                    newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                    score = MinMax(newBoard, depth + 1, this.maxDepth, currentPlayer - 1, newCoordenatesChip, alpha, beta);
+                                    if (score > bestScore)
+                                    {
+                                        bestScore = score;                                
+                                    }
+                                    alpha = Mathf.Max(alpha, score);
+                                   
+                                    if (beta < alpha)
+                                    {
+                                        break;
+                                    }
+                                }
+                                
+                              
+
+                            }
+                        }
+                    }
+                }
+                returnScore = bestScore;
+            }
+            else if (typeChip == TypeChip.goose)
+            {
+                int range;
+                if(coordinatesChip.goosesSquare.Length > 9)
+                {
+                    range = coordinatesChip.goosesSquare.Length / 2;
+                } else
+                {
+                    range = coordinatesChip.goosesSquare.Length;
+                }
+                for (int k = 0; k < range; k++)
+                {
+                    square = coordinatesChip.goosesSquare[k];
+                    for (int j = square.y - 1; j <= square.y + 1; j++)
+                    {
+                        for (int i = square.x - 1; i <= square.x + 1; i++)
+                        {
+                            if (i >= 0 && i <= 6 &&
+                                   j >= 0 && j <= 6)
+                            {
+                                if (board.squareOnBoard[j, i].attachment != Attachment.zero)
+                                {
+                                    newBoard = (Board)board.Clone();
+                                    CoordinatesChip newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());                               
+                                    Square endSquare = new Square(i, j);
+                                    movie = new MovingSquare(board.squareOnBoard[square.y, square.x], endSquare);
+                                    if (board.CanGoseeMovie(movie))
+                                    {
+                                        newBoard.MovieChip(movie, newBoard);
+                                        newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                        score = MinMax(newBoard, depth + 1, this.maxDepth, currentPlayer - 1, newCoordenatesChip, alpha, beta);
+                                        if (score > bestScore)
+                                        {
+                                            bestScore = score;                               
+                                        }
+                                        alpha = Mathf.Max(alpha, score);
+                                    
+                                        if (beta < alpha)
+                                        {
+                                            break;
+                                        }
+                                    }  
+                                }
+                            }
+                        }
+                    }
+                }
+                returnScore = bestScore;
+            }
+
+        }
+
+        else if (currentPlayer == PlayerTurn.firstPlayer)
+        {
+            int bestScore = +200;
+            if (typeChip == TypeChip.goose)
+            {
+                square = coordinatesChip.foxSquare;
+
+                for (int j = square.y - 2; j <= square.y + 2; j++)
+                {
+                    for (int i = square.x - 2; i <= square.x + 2; i++)
+                    {
+                        if (i >= 0 && i <= 6 &&
+                        j >= 0 && j <= 6)
+                        {
+                            if (board.squareOnBoard[j, i].attachment != Attachment.zero)
+                            {
+
+                                newBoard = (Board)board.Clone();
+
+                                CoordinatesChip newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+                                Square endSquare = new Square(i, j);
+                                movie = new MovingSquare(board.squareOnBoard[square.y, square.x], endSquare);
+                                if (board.CanFoxMovie(movie) &&
+                                   !board.FoxEatGoose(movie))
+                                {
+                                    newBoard.MovieChip(movie, newBoard);
+                                    newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+
+                                    score = MinMax(newBoard, depth + 1, this.maxDepth, currentPlayer + 1, newCoordenatesChip, alpha, beta);
+                                    if (score < bestScore)
+                                    {
+                                        bestScore = score;
+                                    }
+                                    beta = Mathf.Min(beta, score);
+                          
+                                    if (beta < alpha)
+                                    {
+                                        break;
+                                    }
+                                }
+                                else
+                                if (board.CanFoxMovie(movie) &&
+                                    board.FoxEatGoose(movie))
+                                {
+                                    Square deleteChipOnSquare = new Square(
+                                          (square.x == endSquare.x) ? square.x :
+                                          (square.x < endSquare.x) ? endSquare.x - 1 : square.x - 1,
+                                          (square.y == endSquare.y) ? square.x :
+                                          (square.y < endSquare.y) ? endSquare.y - 1 : square.y - 1);
+                                    newBoard.MovieChip(movie, newBoard);
+                                    newBoard.DeleteChip(deleteChipOnSquare);
+                                    newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+
+                                    score = MinMax(newBoard, depth + 1, this.maxDepth, currentPlayer + 1, newCoordenatesChip, alpha, beta);
+                                    if (score < bestScore)
+                                    {
+                                        bestScore = score;
+                                    }
+                                    beta = Mathf.Min(beta, score);
+                                  
+                                    if (beta < alpha)
+                                    {
+                                        break;
+                                    }
+                                }
+
+                                
+
+                            }
+                        }
+                    }
+                }
+                returnScore = bestScore;
+            }
+            else if (typeChip == TypeChip.fox)
+            {
+                int range;
+                if (coordinatesChip.goosesSquare.Length > 9)
+                {
+                    range = coordinatesChip.goosesSquare.Length / 2;
+                }
+                else
+                {
+                    range = coordinatesChip.goosesSquare.Length;
+                }
+                for (int k = 0; k < range; k++)
+                {
+                    square = coordinatesChip.goosesSquare[k];
+                    for (int j = square.y - 1; j <= square.y + 1; j++)
+                    {
+                        for (int i = square.x - 1; i <= square.x + 1; i++)
+                        {
+                            if (i >= 0 && i <= 6 &&
+                                   j >= 0 && j <= 6)
+                            {
+                                if (board.squareOnBoard[j, i].attachment != Attachment.zero)
+                                {
+                                    newBoard = (Board)board.Clone();
+                                    CoordinatesChip newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());                 
+                                    Square endSquare = new Square(i, j);
+                                    movie = new MovingSquare(board.squareOnBoard[square.y, square.x], endSquare);
+                                    if (board.CanGoseeMovie(movie))
+                                    {
+                                        newBoard.MovieChip(movie, newBoard);
+                                        newCoordenatesChip = new CoordinatesChip(newBoard.squareOnBoard, newBoard.CountGoose());
+
+                                        score = MinMax(newBoard, depth + 1, this.maxDepth, currentPlayer + 1, newCoordenatesChip, alpha, beta);
+                                        if (score < bestScore)
+                                        {
+                                            bestScore = score;
+                                        }
+                                        beta = Mathf.Min(beta, score);
+                                     
+                                        if (beta < alpha)
+                                        {
+                                            break;
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                }
+                returnScore = bestScore;
+            }
+
+        }
+
+        return returnScore;
+    }
+
+
+}
